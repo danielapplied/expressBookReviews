@@ -3,16 +3,17 @@ let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const axios = require('axios');
+let registeredUsers  = [];
 const public_users = express.Router();
 
 // Get the book list available in the shop
-//Task 1
+// Task 1
 public_users.get('/',function (req, res) {
     res.send(JSON.stringify(books, null, 4));
 });
 
 // Get book details based on ISBN
-//Task 2
+// Task 2
 public_users.get('/isbn/:isbn',function (req, res) {
     const isbn = req.params.isbn;
     let book = null;
@@ -30,7 +31,7 @@ public_users.get('/isbn/:isbn',function (req, res) {
  });
   
 // Get book details based on author
-//Task 3
+// Task 3
 public_users.get('/author/:author',function (req, res) {
     const author = req.params.author.toLowerCase();
     let booksByAuthor = [];
@@ -47,7 +48,7 @@ public_users.get('/author/:author',function (req, res) {
 });
 
 // Get all books based on title
-//Task 4
+// Task 4
 public_users.get('/title/:title',function (req, res) {
     const title = req.params.title.toLowerCase();
     let booksByTitle = [];
@@ -64,7 +65,7 @@ public_users.get('/title/:title',function (req, res) {
 });
 
 //  Get book review
-//Task 5
+// Task 5
 public_users.get('/review/:isbn',function (req, res) {
     const isbn = req.params.isbn;
     let book = null;
@@ -84,19 +85,37 @@ public_users.get('/review/:isbn',function (req, res) {
 // Task 6
 // Complete the code for registering a new user
 public_users.post("/register", (req,res) => {
+
     const username = req.body.username;
     const password = req.body.password;
-    if (username && password && req.session && !req.session.hasOwnProperty('username') && !req.session.hasOwnProperty('password') ) {
-        if (!isValid(username)) {
-            users.push({ "username": username, "password": password });
-            req.session['username'] = username;
-            req.session['password'] = password;
-            return res.status(200).json({ message: "User successfully registered. Now you can login" });
-        } else {
-            return res.status(404).json({ message: "User already exists!" });
-        }
+
+    // Check if user already exists
+
+    const existingUser = registeredUsers.find(user => 
+        user.username === username || user.email === email
+    );
+    
+    if (existingUser) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "User already exists" 
+        });
     }
-    return res.status(404).json({ message: "Unable to register user." });
+    
+    // Create new user object
+    const newUser = {
+        username: username,
+        password: password,
+    };
+    
+    // Add user to array
+    registeredUsers.push(newUser);
+    
+    res.json({ 
+        success: true, 
+        message: "User registered successfully",
+    });
+
 });
 
-module.exports.general = public_users;
+module.exports = { public_users , registeredUsers };

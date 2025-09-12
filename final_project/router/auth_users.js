@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 let books = require("./booksdb.js");
 const regd_users = express.Router();
+const { registeredUsers } = require('./general.js');
 
 let users = [];
 
@@ -27,31 +28,37 @@ const authenticatedUser = (username, password) => {
     }
 }
 
+module.exports = function (app, myDataBase) {
+
 // Only registered users can login
 // Task 7
-public_users.post("/login", (req, res) => {
+regd_users.post("/login", (req, res) => {
+
     const username = req.body.username;
     const password = req.body.password;
-    if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
-    }
-    // Check if session is available
-    if (!req.session) {
-        return res.status(500).json({ message: "Session not configured" });
-    }
-    if (authenticatedUser(username, password)) {
-        let accessToken = jwt.sign({
-            data: password
-        }, 'access', { expiresIn: 60 * 60 });
 
-        req.session.authorization = {
-            accessToken, 
-            username
-        };
-        return res.status(200).json({ message: "User successfully logged in" , "token": accessToken });
-    } else {
-        return res.status(401).json({ message: "Invalid Login. Check username and password" });
+    // Find user in registered users array
+    const user = registeredUsers.find(u =>  (u.username === username ) && u.password === password );
+    
+    if (!user) {
+        return res.status(401).json({ 
+            success: false, 
+            message: "Invalid credentials" 
+        });
     }
+
+    // Create new user object
+    const activeUser = {
+        username: username,
+        loggedIn: true,
+    };
+
+    users.push(activeUser);
+    
+    res.json({ 
+        success: true, 
+        message: "Login successful",
+    });
 });
 
 // Add a book review
