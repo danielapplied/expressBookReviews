@@ -2,11 +2,10 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 let books = require("./booksdb.js");
 const regd_users = express.Router();
-const { registeredUsers } = require('./general.js');
 
 let users = [];
 
-const isValid = (username)=>{ //returns boolean
+const isValid = (username) => {
     let userswithsamename = users.filter((user) => {
         return user.username === username
     });
@@ -28,57 +27,57 @@ const authenticatedUser = (username, password) => {
     }
 }
 
-module.exports = function (app, myDataBase) {
-
-// Only registered users can login
-// Task 7
+// Task 7: Login as a Registered user
 regd_users.post("/login", (req, res) => {
-
     const username = req.body.username;
     const password = req.body.password;
 
-    // Find user in registered users array
-    const user = registeredUsers.find(u =>  (u.username === username ) && u.password === password );
-    
-    if (!user) {
-        return res.status(401).json({ 
-            success: false, 
-            message: "Invalid credentials" 
-        });
+    if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
     }
 
-    // Create new user object
-    const activeUser = {
-        username: username,
-        loggedIn: true,
-    };
+    // Check if session is available
+    if (!req.session) {
+        return res.status(500).json({ message: "Session not configured" });
+    }
 
-    users.push(activeUser);
-    
-    res.json({ 
-        success: true, 
-        message: "Login successful",
-    });
+    if (authenticatedUser(username, password)) {
+        let accessToken = jwt.sign({
+            data: password
+        }, 'access', { expiresIn: 60 * 60 });
+
+        req.session.authorization = {
+            accessToken, 
+            username
+        };
+        
+        return res.status(200).json({ message: "User successfully logged in" , "token": accessToken });
+    } else {
+        return res.status(401).json({ message: "Invalid Login. Check username and password" });
+    }
 });
 
-// Add a book review
-// Task 8
+// Task 8: Add/Modify a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
     const isbn = req.params.isbn;
     const review = req.body.review;
     const username = req.session.authorization.username;
+    
     if (!review) {
         return res.status(400).json({ message: "Review content is required" });
     }
+    
     let book = null;
-    let bookKey = null; 
+    let bookKey = null;
+    
     for (let key in books) {
         if (books[key].isbn === isbn) {
             book = books[key];
             bookKey = key;
             break;
         }
-    } 
+    }
+    
     if (book) {
         if (!book.reviews) {
             book.reviews = {};
@@ -99,8 +98,10 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
 regd_users.delete("/auth/review/:isbn", (req, res) => {
     const isbn = req.params.isbn;
     const username = req.session.authorization.username;
+    
     let book = null;
     let bookKey = null;
+    
     for (let key in books) {
         if (books[key].isbn === isbn) {
             book = books[key];
@@ -108,6 +109,7 @@ regd_users.delete("/auth/review/:isbn", (req, res) => {
             break;
         }
     }
+    
     if (book) {
         if (book.reviews && book.reviews[username]) {
             delete book.reviews[username];
